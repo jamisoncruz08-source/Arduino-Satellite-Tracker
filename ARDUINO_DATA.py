@@ -39,11 +39,27 @@ GROUPS = [
 
 current_group = 0
 def load_satellites():
-    tracked_objects = load_satellite_group(GROUPS[current_group])
-    for sat in SATELLITES:
-        print(f"Loading {sat['name']} ({sat['catnr']})...")
-        tracked_objects.append(load_satellite_by_catnr(sat["catnr"]))
-    tracked_objects.append("back")
+    group = GROUPS[current_group]
+
+    # Load from cache if we've already downloaded this group
+    if group in satellite_cache:
+        print(f"Using cached group: {group}")
+        tracked_objects = satellite_cache[group].copy()
+
+    else:
+        print(f"Loading group: {group}")
+
+        tracked_objects = load_satellite_group(group)
+
+        for sat in SATELLITES:
+            print(f"Loading {sat['name']} ({sat['catnr']})...")
+            tracked_objects.append(load_satellite_by_catnr(sat["catnr"]))
+
+        tracked_objects.append("back")
+
+        # Save a copy in the cache
+        satellite_cache[group] = tracked_objects.copy()
+
     return tracked_objects
 
 satellite = None
