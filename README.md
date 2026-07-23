@@ -138,5 +138,4 @@ Orbital calculations performed using the **Skyfield** Python library.
 ---
 
 ## License
-**** MIT
 This project is intended for educational and personal use.
