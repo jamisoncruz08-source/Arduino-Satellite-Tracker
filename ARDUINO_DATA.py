@@ -120,9 +120,10 @@ def update_tracking():
     info = get_satellite_position(satellite)
 
     return (
-        f"{info['name']},"
-        f":{info['latitude']:.2f},"
-        f":{info['longitude']:.2f}\n"
+        f'{info['name']},'
+        f'{info['latitude']:.2f},'
+        f'{info['longitude']:.2f},'
+        f'{info['altitude']:.2f}\n'
     )
 
 def update_satellite_menu():
