@@ -63,7 +63,11 @@ def load_satellites():
     return tracked_objects
 
 satellite = None
-tracked_objects = load_satellites()
+try:
+    tracked_objects = load_satellites()
+except Exception as e:
+    print(e)
+    tracked_objects = ["back"]
 def handle_group_menu(command):
     global current_group
     global current_sat
