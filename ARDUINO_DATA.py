@@ -177,7 +177,9 @@ while True:
 
     # Tracking updates continuously
     else:
-        arduino.write(message.encode())
-        print(message)
+        if time.time() - last_update >= 10:
+            arduino.write(message.encode())
+            print(message)
+            last_update = time.time()
 
     time.sleep(0.1)
