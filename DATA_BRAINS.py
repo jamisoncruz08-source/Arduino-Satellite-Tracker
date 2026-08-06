@@ -1,25 +1,54 @@
+
 from skyfield.api import load, wgs84
 import time
+import os
 
 ts = load.timescale()
 
 
 def load_satellite_by_catnr(catnr):
     url = f"https://celestrak.org/NORAD/elements/gp.php?CATNR={catnr}&FORMAT=tle"
-    satellites = load.tle_file(url, reload=True)
+
+    filename = f"{catnr}.tle"
+
+    reload_file = True
+
+    if os.path.exists(filename):
+        age = time.time() - os.path.getmtime(filename)
+
+        if age < 24 * 60 * 60:
+            reload_file = False
+
+    satellites = load.tle_file(
+        url,
+        filename=filename,
+        reload=reload_file
+    )
 
     if len(satellites) == 0:
         raise ValueError(f"No satellite found for CATNR {catnr}")
 
     return satellites[0]
-
 def load_satellite_group(group_name):
     url = f"https://celestrak.org/NORAD/elements/gp.php?GROUP={group_name}&FORMAT=tle"
 
+    filename = f"{group_name}.tle"
+
+    # Assume we need to download
+    reload_file = True
+
+    # If the file already exists, check its age
+    if os.path.exists(filename):
+        age = time.time() - os.path.getmtime(filename)
+
+        # Use the cached file if it's less than 24 hours old
+        if age < 24 * 60 * 60:
+            reload_file = False
+
     satellites = load.tle_file(
         url,
-        reload=True,
-        filename=f"{group_name}.tle"
+        filename=filename,
+        reload=reload_file
     )
 
     if len(satellites) == 0:
@@ -28,6 +57,14 @@ def load_satellite_group(group_name):
     return satellites
 def get_satellite_position(satellite):
     t = ts.now()
+
+    observer = wgs84.latlon(38.8339, -104.8214)
+
+    difference = satellite - observer
+    topocentric = difference.at(t)
+
+    alt, az, distance = topocentric.altaz()
+
     geocentric = satellite.at(t)
     subpoint = wgs84.subpoint(geocentric)
 
@@ -35,7 +72,9 @@ def get_satellite_position(satellite):
         "name": satellite.name,
         "latitude": subpoint.latitude.degrees,
         "longitude": subpoint.longitude.degrees,
-        "altitude": subpoint.elevation.km
+        "altitude": subpoint.elevation.km,
+        "azimuth": az.degrees,
+        "elevation": alt.degrees
     }
 def print_mars_position():
     t = ts.now()
@@ -80,7 +119,7 @@ if __name__ == "__main__":
     while True:
         print("----- update -----")
 
-        for satellite in SATELLITES:
+        for satellite in tracked_objects:
            info = get_satellite_position(satellite)
 
            print(
