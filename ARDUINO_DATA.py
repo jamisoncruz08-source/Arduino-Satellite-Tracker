@@ -1,13 +1,16 @@
 # Import the pySerial library so Python can communicate with the Arduino
 import serial,time
-from LCDSAT import ( load_satellite_by_catnr, load_satellite_group, get_satellite_position )
+from DATA_BRAINS import (load_satellite_by_catnr, load_satellite_group, get_satellite_position)
 # Globals
 current_sat = 0      # Browsing with joystick
 GROUP_MENU = "GROUP_MENU"
 SATELLITE_MENU = "SATELLITE_MENU"
 TRACKING = "TRACKING"
+tracking_page = 0
 PORT = "COM8"
+last_update = 0
 state = GROUP_MENU
+satellite_cache = {}
 def connect_arduino(port):
     arduino = serial.Serial(port, 9600)
     time.sleep(2)
@@ -29,10 +32,10 @@ SATELLITES = [
 ]
 
 GROUPS = [
-    "Stations",
-    "Weather",
-    "Science",
-    "Military",
+    "stations",
+    "weather",
+    "science",
+    "military",
     "amateur",
     "science"
 ]
@@ -90,6 +93,8 @@ def handle_satellite_menu(command):
     global current_sat
     global satellite
     global state
+    global last_update
+    global last_message
 
     if command == "LEFT":
         current_sat = (current_sat - 1) % len(tracked_objects)
@@ -109,12 +114,20 @@ def handle_satellite_menu(command):
         else:
 
             satellite = tracked_objects[current_sat]
-
+            last_update = 0
             state = TRACKING
 
 def handle_tracking(command):
     global state
-    if command == "SELECT":
+    global tracking_page
+
+    if command == "LEFT":
+        tracking_page = (tracking_page - 1) % 4
+
+    elif command == "RIGHT":
+        tracking_page = (tracking_page + 1) % 4
+
+    elif command == "SELECT":
         state = SATELLITE_MENU
 
 def update_group_menu():
@@ -143,11 +156,10 @@ def read_joystick():
         return arduino.readline().decode().strip()
 
     return None
-# Main Program Loop
 last_message = ""
-
+# Main Program Loop
 while True:
-    # Check joystick input
+    # Read encoder as fast as possible
     command = read_joystick()
 
     if command:
@@ -161,6 +173,7 @@ while True:
         elif state == TRACKING:
             handle_tracking(command)
 
+    # Build the current message
     if state == GROUP_MENU:
         message = update_group_menu()
 
@@ -170,18 +183,19 @@ while True:
     elif state == TRACKING:
         message = update_tracking()
 
-    # Menus only send when they change
+    # Menus: only send if changed
     if state != TRACKING:
         if message != last_message:
             arduino.write(message.encode())
             print(message)
             last_message = message
 
-    # Tracking updates continuously
+    # Tracking: send every second
     else:
-        if time.time() - last_update >= 10:
+        if time.time() - last_update >= 50:
             arduino.write(message.encode())
             print(message)
             last_update = time.time()
 
-    time.sleep(0.1)
+    # Tiny pause so Python doesn't use 100% CPU
+    time.sleep(0.01)
